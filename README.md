@@ -56,12 +56,19 @@ When you run the tool, you will be prompted to enter:
 
 == Aerodatabox 7-day fetch and route builder ==
 Enter your RapidAPI key: xxxxxxx
-Enter airport code (ICAO 4 letters or IATA 3 letters, e.g., YBBN or BNE): YBBN
-Enter start date (YYYY-MM-DD) for a 7-day window that is fully in the past: 2025-10-28
-Enter full output folder path: C:\Users\XXXX\Documents\Schedules
-Write combined_schedule.json [y/n]: y
-Write routes.txt [y/n]: y
+
+Enter airport code (ICAO 4 letters or IATA 3 letters, e.g., YBBN or BNE): `YBBN`
+
+Enter start date (YYYY-MM-DD) for a 7-day window that is fully in the past: `2025-10-28`
+
+Enter full output folder path: `C:\Users\XXXX\Documents\Schedules`
+
+Write combined_schedule.json [y/n]: `y`
+
+Write routes.txt [y/n]: `y`
+
 Fetching 7 days (2025-10-28 to 2025-11-03) for YBBN...
+
 Wrote 154 routes -> C:\Users\XXXX\Documents\Schedules\routes.txt
 
 
