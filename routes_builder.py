@@ -1,6 +1,3 @@
-# fetch_and_build_routes_minimal.py
-# Minimal standard-library version: only external dep is requests
-
 import os
 import sys
 import json
