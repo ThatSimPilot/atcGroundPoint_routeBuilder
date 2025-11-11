@@ -6,6 +6,8 @@ The **Aerodatabox Route Builder** is a command-line tool that retrieves 7 days o
 
 Each output line represents an airline–destination combination, showing all aircraft families operating on that route.
 
+**Note:** This is not an official tool from the developer of ATC Ground Point and is independantly developed and maintained.
+
 ---
 
 ## Overview
