@@ -6,7 +6,9 @@ The **Aerodatabox Route Builder** is a command-line tool that retrieves 7 days o
 
 Each output line represents an airline–destination combination, showing all aircraft families operating on that route.
 
-**Note:** This is not an official tool from the developer of ATC Ground Point and is independantly developed and maintained.
+**Note:** This is not an official tool from the developer of ATC Ground Point and is independently developed and maintained.
+
+<a href="https://www.buymeacoffee.com/thatsimpilot" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
 ---
 
