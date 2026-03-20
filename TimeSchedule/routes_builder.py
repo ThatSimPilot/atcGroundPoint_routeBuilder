@@ -1,395 +1,410 @@
-import os
-import sys
-import json
-import re
 import requests
-from datetime import datetime, date, timedelta
-from typing import Dict, Set, Tuple, Optional
+from datetime import datetime, timedelta
+import os, sys
+import time
+import tkinter as tk
+from tkinter import filedialog
+from collections import defaultdict
+import csv
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from aircraftMapping import AIRCRAFT_NAME_TO_ICAO
 
 BASE_URL = "https://aerodatabox.p.rapidapi.com/flights/airports"
-QUERYSTRING = {
-    "withLeg": "true",
-    "direction": "Both",
-    "withCancelled": "true",
-    "withCodeshared": "true",
-    "withCargo": "true",
-    "withPrivate": "true",
-    "withLocation": "false",
+
+QUERYPARAMS = {
+    "withLeg":"true",
+    "direction":"Both",
+    "withCancelled":"true",
+    "withCodeshared":"false",
+    "withCargo":"true",
+    "withPrivate":"true",
+    "withLocation":"false"
 }
 
-def prompt_api_key() -> str:
-    key = input("Enter your RapidAPI key: ").strip()
-    if not key:
-        print("API key is required.")
-        sys.exit(1)
-    return key
-
-def prompt_airport_code() -> str:
+def prompt_api_key () -> str:
     while True:
-        code = input("Enter airport code (ICAO 4 letters or IATA 3 letters, e.g., YBBN or BNE): ").strip().upper()
-        if len(code) in (3, 4) and code.isalnum():
-            return code
-        print("Invalid code. Enter 3-letter IATA or 4-letter ICAO.")
-
-def prompt_start_date_past_window() -> date:
-    """
-    Prompt for YYYY-MM-DD until the 7-day window [start, start+6] is entirely in the past.
-    The last day must be strictly before today.
-    """
+        key = input("Please enter your RapidAPI key: ")
+        if key:
+            return key
+        print("API key cannot be empty. Please try again.")
+        
+    
+def prompt_airport_code():
     while True:
-        s = input("Enter start date (YYYY-MM-DD) for a 7-day window that is fully in the past: ").strip()
+        code = input("Please enter the ICAO code of the airport: ")
+        if len(code) == 4 and code.isalpha():
+            code_type = "ICAO"
+            return code.upper(), code_type
+        print("Invalid code. Please enter a valid ICAO (4 letters) code.") 
+    
+def prompt_end_date() -> datetime:
+    while True:
+        raw = input("Please enter the end date in DD-MM-YYYY format (Must be before today's date): ")
         try:
-            d = datetime.strptime(s, "%Y-%m-%d").date()
+            end_date = datetime.strptime(raw, "%d-%m-%Y")
+            today = datetime.now()
+
+            #Must be before today's date
+            if end_date.date() >= today.date():
+                print("End date must be before today's date. Please try again.")
+                continue
+
+            return end_date
         except ValueError:
-            print("Invalid date format. Please use YYYY-MM-DD.")
-            continue
+            print("Invalid date format. Please enter the date in DD-MM-YYYY format.")
 
-        end_d = d + timedelta(days=6)
-        today = date.today()
-        if end_d < today:
-            return d
-        print(f"Invalid window. End date {end_d} must be before today {today}. Try an earlier start date.")
-
-def prompt_output_folder() -> str:
-    folder = input("Enter full output folder path: ").strip()
-    if not folder:
-        print("Output path required.")
-        sys.exit(1)
-    os.makedirs(folder, exist_ok=True)
-    return folder
-
-def prompt_yes_no(msg: str) -> bool:
-    while True:
-        ans = input(msg + " [y/n]: ").strip().lower()
-        if ans in ("y", "yes"):
-            return True
-        if ans in ("n", "no"):
-            return False
-        print("Please answer y or n.")
-
-def code_type_for(code: str) -> str:
-    return "iata" if len(code) == 3 else "icao"
-
-def fetch_window(api_key: str, code_type: str, airport_code: str, day_date: date, start_time: str, end_time: str) -> dict:
-    headers = {
-        "x-rapidapi-host": "aerodatabox.p.rapidapi.com",
+def build_headers(api_key: str) -> dict:
+    return {
         "x-rapidapi-key": api_key,
+	    "x-rapidapi-host": "aerodatabox.p.rapidapi.com",
+	    "Content-Type": "application/json"
     }
-    from_iso = f"{day_date.isoformat()}T{start_time}"
-    to_iso   = f"{day_date.isoformat()}T{end_time}"
-    url = f"{BASE_URL}/{code_type}/{airport_code}/{from_iso}/{to_iso}"
 
-    r = requests.get(url, headers=headers, params=QUERYSTRING, timeout=40)
-    if r.status_code != 200:
-        return {"_error": f"{r.status_code} {r.text[:200]}", "departures": [], "arrivals": []}
+def build_12hr_windows(end_date: datetime) -> list[tuple[datetime, datetime]]:
+    start_date = end_date - timedelta(days=6)
+    windows = []
+
+    current_day = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    final_day = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    while current_day <= final_day:
+        # AM: 000000 -> 115959
+        am_start = current_day.replace(hour=0, minute=0, second=0, microsecond=0)
+        am_end = current_day.replace(hour=11, minute=59, second=59, microsecond=0)
+
+        # PM: 120000 -> 235959
+        pm_start = current_day.replace(hour=12, minute=0, second=0, microsecond=0)
+        pm_end = current_day.replace(hour=23, minute=59, second=59, microsecond=0)
+
+        windows.append((am_start, am_end))
+        windows.append((pm_start, pm_end))
+
+        current_day += timedelta(days=1)
+
+    return windows
+
+def format_api_datetime(dt: datetime) -> str:
+    """
+    AeroDataBox endpoint examples use local datetime in the path like:
+    YYYY-MM-DDTHH:MM:SS
+    """
+    return dt.strftime("%Y-%m-%dT%H:%M:%S")
+
+def get_aircraft_icao(flight: dict) -> str:
+    aircraft = flight.get("aircraft") or {}
+
+    # Try API-provided aircraft codes first
+    code = aircraft.get("modelCode") or aircraft.get("icaoCode") or aircraft.get("code")
+    if code:
+        return code.upper()
+
+    # Then try your manual mapping
+    name = aircraft.get("model") or aircraft.get("name") or "UNKNOWN"
+    return AIRCRAFT_NAME_TO_ICAO.get(name, name)
+
+def get_stand_tag(flight: dict) -> str:
+    return "CARGO" if flight.get("isCargo") is True else "ANY"
+
+def fetch_airport_flights(code_type: str, code: str, from_dt: datetime, to_dt: datetime, headers: dict):
+    url = f"{BASE_URL}/{code_type}/{code}/{format_api_datetime(from_dt)}/{format_api_datetime(to_dt)}"
+
     try:
-        return r.json()
-    except Exception as e:
-        return {"_error": f"JSON error: {e}", "departures": [], "arrivals": []}
+        response = requests.get(
+            url,
+            headers=headers,
+            params=QUERYPARAMS,
+            timeout=30
+        )
 
-# Aircraft mapping
-FAMILY_ID = {
-    "C172": 0,
-    "PA44": 1,
-    "C25C": 2,
+        # Handle HTTP status codes explicitly
+        if response.status_code == 200:
+            try:
+                return response.json()
+            except ValueError:
+                print(f"Invalid JSON response for {from_dt} → {to_dt}")
+                return None
 
-    "AT73": 3,
-    "AT72": 3,
-    "AT75": 3,
+        elif response.status_code == 401:
+            print("ERROR 401: Invalid API key.")
+        elif response.status_code == 403:
+            print("ERROR 403: Access forbidden.")
+        elif response.status_code == 404:
+            print(f"ERROR 404: Airport not found ({code}).")
+        elif response.status_code == 429:
+            print("ERROR 429: Rate limit exceeded. Slow down requests.")
+        elif response.status_code >= 500:
+            print(f"SERVER ERROR {response.status_code}: AeroDataBox issue.")
+        else:
+            print(f"HTTP ERROR {response.status_code}: {response.text}")
 
-    "DH8D": 4,
-    "DH8C": 4,
-    "DH8A": 4,
-
-    "CRJ9": 5,
-    "CRJ7": 5,
-    "CRJX": 5,
-
-    "E190": 6,
-    "E195": 6,
-
-    "A320": 7,
-    "A319": 7,
-    "A20N": 7,
-
-    "A359": 8,
-    "A35K": 8,
-
-    "A388": 9,
-
-    "B738": 10,
-    "B737": 10,
-    "B739": 10,
-    "B38M": 10,
-
-    "B788": 11,
-    "B787": 11,
-    "B789": 11,
-    "B78X": 11,
-
-    "B748": 12,
-    "B747": 12,
-
-    "B752": 13,
-    "B757": 13,
-
-    "A343": 14,
-    "A340": 14,
-
-    "B773": 15,
-    "B777": 15,
-    "B772": 15,
-    "B77W": 15,
-    "B779": 15,
-
-    "A333": 16,
-    "A330": 16,
-    "A332": 16,
-    "A339": 16,
-
-    "B763": 17,
-    "B767": 17,
-
-    "T204": 18,
-    "TU204": 18,
-
-    "AN12": 19,
-
-    "A124": 20,
-    "AN124": 20,
-
-    "MD11": 21,
-
-    "C208": 22,
-    "B190": 23,
-    "E145": 24,
-
-    "E75S": 25,
-    "E170": 25,
-    "E175": 25,
-
-    "F100": 26,
-    "IL18": 27,
-    "IL62": 28,
-    "IL96": 29,
-    "T154": 30,
-    "TU154": 30,
-    "B462": 31,
-    "J328": 32,
-    "DC3": 33,
-    "CONC": 34,
-    "A321": 35,
-}
-
-def is_prop_like(text: str) -> bool:
-    s = (text or "").upper()
-    props = ["CESSNA", "PIPER", "BEECH", "KING AIR", "TURBOPROP", "DHC", "DASH", "ATR", "SAAB", "CARAVAN", "PC12"]
-    return any(p in s for p in props)
-
-def guess_prop_code(model: str) -> Optional[str]:
-    s = (model or "").upper()
-    direct = [
-        ("PC12", "PC12"),
-        ("C208", "C208"),
-        ("CARAVAN", "C208"),
-        ("C172", "C172"),
-        ("172", "C172"),
-        ("PA44", "PA44"),
-        ("BE200", "BE20"),
-        ("KING AIR", "BE20"),
-        ("PA31", "PA31"),
-        ("PA34", "PA34"),
-    ]
-    for needle, code in direct:
-        if needle in s:
-            return code
-    tokens = re.findall(r"\b[A-Z]{1,2}\d{2,3}\b", s)
-    return tokens[0] if tokens else None
-
-def normalise_family(model: Optional[str]) -> Optional[str]:
-    if not model:
         return None
 
-    m = model.upper()
+    except requests.Timeout:
+        print(f"Timeout error for window {from_dt} → {to_dt}")
+    except requests.ConnectionError:
+        print("Connection error. Check your internet.")
+    except requests.RequestException as e:
+        print(f"Unexpected request error: {e}")
 
-    # Light aircraft
-    if "172" in m:
-        return "C172"
-    if "PA44" in m:
-        return "PA44"
-    if "CJ4" in m or "C25C" in m:
-        return "C25C"
+    return None
 
-    # Boeing
-    if "737" in m:
-        return "B737"
-    if "787" in m:
-        return "B787"
-    if "777" in m:
-        return "B777"
-    if "747" in m:
-        return "B747"
-    if "757" in m:
-        return "B757"
-    if "767" in m:
-        return "B767"
+def choose_output_folder() -> str:
+    """
+    Open a folder picker so the user can choose where the CSV is saved.
+    Falls back to current working directory if cancelled.
+    """
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
 
-    # Airbus
-    if "A380" in m:
-        return "A388"
-    if "A350" in m:
-        return "A359"
-    if "A340" in m:
-        return "A340"
-    if "A330" in m:
-        return "A330"
-    if "A321" in m:
-        return "A321"
-    if "A320" in m or "A319" in m or "A20N" in m:
-        return "A320"
+    folder = filedialog.askdirectory(title="Select destination folder for CSV output")
+    root.destroy()
 
-    # Embraer / regional jets
-    if "E195" in m or "E190" in m:
-        return "E190"
-    if "E175" in m or "E170" in m or "E75" in m:
-        return "E75S"
-    if "E145" in m:
-        return "E145"
+    if not folder:
+        print("No folder selected. Using current working directory instead.")
+        return os.getcwd()
 
-    # CRJ
-    if "CRJ" in m or "CRG" in m:
-        return "CRJ9"
+    return folder
 
-    # Props
-    if "Q400" in m or "DHC" in m or "DH8" in m or "DASH" in m:
-        return "DH8D"
-    if "ATR" in m:
-        return "AT73"
 
-    # Fokker
-    if "F100" in m or "FOKKER 100" in m:
-        return "F100"
+def get_airline_code(flight: dict) -> str:
+    """
+    Prefer operating airline from callsign prefix.
+    Fall back to airline object from API.
+    """
+    call_sign = (flight.get("callSign") or "").strip().upper()
+    if len(call_sign) >= 3 and call_sign[:3].isalpha():
+        return call_sign[:3]
 
-    # Soviet / freight / misc
-    if "TU204" in m or "T204" in m:
-        return "T204"
-    if "AN124" in m or "A124" in m:
-        return "A124"
-    if "AN12" in m:
-        return "AN12"
-    if "MD11" in m:
-        return "MD11"
-    if "IL18" in m:
-        return "IL18"
-    if "IL62" in m:
-        return "IL62"
-    if "IL96" in m:
-        return "IL96"
-    if "TU154" in m or "T154" in m:
-        return "T154"
+    airline = flight.get("airline") or {}
 
-    # Misc props / commuters
-    if "C208" in m or "CARAVAN" in m:
-        return "C208"
-    if "B190" in m or "BEECH 1900" in m or "1900" in m:
-        return "B190"
+    return (
+        airline.get("icao")
+        or airline.get("iata")
+        or airline.get("code")
+        or airline.get("name")
+        or "UNKNOWN"
+    ).upper()
 
-    # Classics
-    if "BAE" in m or "146" in m:
-        return "B462"
-    if "328" in m:
-        return "J328"
-    if "DC3" in m or "DC-3" in m:
-        return "DC3"
-    if "CONCORDE" in m or "CONC" in m:
-        return "CONC"
+def get_route_airport_code(flight: dict, direction: str) -> str:
+    """
+    For departures, use arrival airport.
+    For arrivals, use departure airport.
+    Returns ICAO if available, otherwise IATA.
+    """
+    if direction == "departure":
+        airport = (
+            flight.get("arrival") or {}
+        ).get("airport") or {}
+    else:
+        airport = (
+            flight.get("departure") or {}
+        ).get("airport") or {}
 
-    return "A320"
+    return (
+        airport.get("icao")
+        or airport.get("iata")
+        or airport.get("code")
+        or "UNKNOWN"
+    ).upper()
 
-def family_to_id(family: str) -> Optional[int]:
-    return FAMILY_ID.get(family, FAMILY_ID["A320"])
+def get_callsign(flight: dict) -> str:
+    return (flight.get("callSign") or "UNKNOWN").strip().upper()
 
-def extract_routes(combined: dict, home_icao: str) -> Dict[Tuple[str, str], Set[Tuple[str, int]]]:
-    routes: Dict[Tuple[str, str], Set[Tuple[str, int]]] = {}
-    for payload in combined.values():
-        if not isinstance(payload, dict):
-            continue
-        for side in ("departures", "arrivals"):
-            for f in payload.get(side, []):
-                if (f.get("codeshareStatus") or "").lower() != "isoperator":
-                    continue
-                airline_icao = ((f.get("airline") or {}).get("icao") or "").upper()
-                if not airline_icao or len(airline_icao) != 3:
-                    continue
-                if side == "departures":
-                    other_icao = (((f.get("arrival") or {}).get("airport") or {}).get("icao") or "").upper()
-                else:
-                    other_icao = (((f.get("departure") or {}).get("airport") or {}).get("icao") or "").upper()
-                if not other_icao or other_icao == home_icao:
-                    continue
 
-                model = ((f.get("aircraft") or {}).get("model")) or ""
-                fam = normalise_family(model)
+def get_departure_airport_code(flight: dict) -> str:
+    airport = (flight.get("departure") or {}).get("airport") or {}
+    return (
+        airport.get("icao")
+        or airport.get("iata")
+        or airport.get("code")
+        or "UNKNOWN"
+    ).upper()
 
-                if fam:
-                    fid = family_to_id(fam)
-                elif is_prop_like(model):
-                    code = guess_prop_code(model) or "A320"
-                    fam, fid = code, FAMILY_ID["A320"]
-                else:
-                    fam, fid = "A320", FAMILY_ID["A320"]
 
-                routes.setdefault((airline_icao, other_icao), set()).add((fam, fid))
-    return routes
+def get_arrival_airport_code(flight: dict) -> str:
+    airport = (flight.get("arrival") or {}).get("airport") or {}
+    return (
+        airport.get("icao")
+        or airport.get("iata")
+        or airport.get("code")
+        or "UNKNOWN"
+    ).upper()
 
-def write_routes_txt(routes: Dict[Tuple[str, str], Set[Tuple[str, int]]], path: str) -> None:
-    lines = []
-    for (airline, dest) in sorted(routes.keys()):
-        fams = sorted(routes[(airline, dest)], key=lambda x: (x[0], x[1]))
-        joined = ":".join([f"{fam}.{fid}" for fam, fid in fams])
-        lines.append(f"{airline}-{dest}-{joined}-ANY#")
-    with open(path, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
+
+def get_flight_time(flight: dict, direction: str) -> str:
+    """
+    For departures, use departure scheduled local time.
+    For arrivals, use arrival scheduled local time.
+    Returns HH:MM where possible.
+    """
+    if direction == "departure":
+        time_block = (flight.get("departure") or {}).get("scheduledTime") or {}
+    else:
+        time_block = (flight.get("arrival") or {}).get("scheduledTime") or {}
+
+    local_time = time_block.get("local")
+    utc_time = time_block.get("utc")
+
+    raw_time = local_time or utc_time
+    if not raw_time:
+        return "UNKNOWN"
+
+    # Expected examples:
+    # 2026-03-04 19:55+10:00
+    # 2026-03-04 09:55Z
+    try:
+        time_part = raw_time.split(" ")[1]
+        return time_part[:5]
+    except (IndexError, AttributeError):
+        return raw_time
+
+
+def aggregate_flights_for_csv(all_results: list, airport_code: str) -> list[dict]:
+    """
+    Combines flights into rows with headings:
+    Time, Callsign, Departure Airport, Arrival Airport, Airplane Model, Stand Tags
+
+    For the requested airport:
+    - departures always depart FROM airport_code
+    - arrivals always arrive TO airport_code
+    """
+    airport_code = airport_code.upper()
+    flights_map = defaultdict(set)
+
+    for result in all_results:
+        payload = result.get("data") or {}
+
+        # Handle either:
+        # 1) {"departures": [...], "arrivals": [...]}
+        # 2) {"data": {"departures": [...], "arrivals": [...]}}
+        if "departures" in payload or "arrivals" in payload:
+            data = payload
+        else:
+            data = payload.get("data") or {}
+
+        departures = data.get("departures") or []
+        arrivals = data.get("arrivals") or []
+
+        for flight in departures:
+            callsign = get_callsign(flight)
+            dep_airport = airport_code
+            arr_airport = get_arrival_airport_code(flight)
+            flight_time = get_flight_time(flight, "departure")
+            aircraft_code = get_aircraft_icao(flight)
+            stand_tag = get_stand_tag(flight)
+
+            # For departures, only destination is required from API
+            if arr_airport != "UNKNOWN":
+                key = (flight_time, callsign, dep_airport, arr_airport, stand_tag)
+                flights_map[key].add(aircraft_code)
+
+        for flight in arrivals:
+            callsign = get_callsign(flight)
+            dep_airport = get_departure_airport_code(flight)
+            arr_airport = airport_code
+            flight_time = get_flight_time(flight, "arrival")
+            aircraft_code = get_aircraft_icao(flight)
+            stand_tag = get_stand_tag(flight)
+
+            # For arrivals, only origin is required from API
+            if dep_airport != "UNKNOWN":
+                key = (flight_time, callsign, dep_airport, arr_airport, stand_tag)
+                flights_map[key].add(aircraft_code)
+
+    rows = []
+    for (flight_time, callsign, dep_airport, arr_airport, stand_tag), aircraft_set in sorted(flights_map.items()):
+        rows.append({
+            "Time": flight_time,
+            "Callsign": callsign,
+            "Departure Airport": dep_airport,
+            "Arrival Airport": arr_airport,
+            "Airplane Model": ":".join(sorted(aircraft_set)),
+            "Stand Tags": stand_tag
+        })
+
+    return rows
+
+def write_csv(rows: list[dict], airport_code: str, end_date: datetime, output_folder: str) -> str:
+    """
+    Writes the time-based schedule CSV to disk.
+    """
+    filename = f"{airport_code.upper()}_schedule.csv"
+    output_path = os.path.join(output_folder, filename)
+
+    with open(output_path, "w", newline="", encoding="utf-8") as csvfile:
+        writer = csv.DictWriter(
+            csvfile,
+            fieldnames=[
+                "Time",
+                "Callsign",
+                "Departure Airport",
+                "Arrival Airport",
+                "Airplane Model",
+                "Stand Tags"
+            ]
+        )
+        writer.writeheader()
+        writer.writerows(rows)
+
+    return output_path
 
 def main():
-    print("== Aerodatabox 7-day fetch and route builder ==")
     api_key = prompt_api_key()
-    airport_code = prompt_airport_code()
-    start_date = prompt_start_date_past_window()
-    out_folder = prompt_output_folder()
+    code, code_type = prompt_airport_code()
+    end_date = prompt_end_date()
+    headers = build_headers(api_key)
 
-    write_json = prompt_yes_no(f"Write {airport_code}_combined_schedule.json")
-    write_txt  = prompt_yes_no(f"Write {airport_code}_routes.txt")
-    if not write_json and not write_txt:
-        print("Nothing to write. Choose at least one output format.")
-        sys.exit(0)
+    windows = build_12hr_windows(end_date)
 
-    code_type = code_type_for(airport_code)
-    home_icao = airport_code if code_type == "icao" else ""
+    all_results = []
 
-    combined = {}
-    days = [start_date + timedelta(days=i) for i in range(7)]
-    windows = [("am", "00:00", "11:59"), ("pm", "12:00", "23:59")]
+    for from_dt, to_dt in windows:
+        print(f"Fetching {code} {code_type.upper()} from {from_dt} to {to_dt}")
 
-    print(f"Fetching 7 days ({days[0]} to {days[-1]}) for {airport_code}...")
-    for d in days:
-        for label, s, e in windows:
-            data = fetch_window(api_key, code_type, airport_code, d, s, e)
-            combined[f"{d.isoformat()}_{label}"] = data
-            if "_error" in data:
-                print(f"Warning: {d} {label} -> {data['_error'][:80]}")
+        data = fetch_airport_flights(code_type, code, from_dt, to_dt, headers)
 
-    if write_json:
-        json_path = os.path.join(out_folder, f"{airport_code}_combined_schedule.json")
-        with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(combined, f, ensure_ascii=False, indent=2)
-        print(f"Saved combined JSON -> {json_path}")
+        if data:
+            departures = data.get("departures") or []
+            if departures:
+                print("     Sample departure keys:", list(departures[0].keys()))
+            arrivals = data.get("arrivals") or []
+            if arrivals:
+                print("     Sample arrival keys:", list(arrivals[0].keys()))
 
-    if write_txt:
-        routes = extract_routes(combined, home_icao)
-        txt_path = os.path.join(out_folder, f"{airport_code}_routes.txt")
-        write_routes_txt(routes, txt_path)
-        print(f"Wrote {len(routes)} routes -> {txt_path}")
+            print(f"  Returned {len(departures)} departures and {len(arrivals)} arrivals")
+
+            all_results.append({
+                "from": from_dt,
+                "to": to_dt,
+                "data": data
+            })
+        else:
+            print("  No data returned for this window")
+
+        time.sleep(0.5)
+
+    print(f"\nCompleted. Pulled {len(all_results)} successful 12-hour windows.")
+
+    if not all_results:
+        print("No successful results returned, so no CSV was created.")
+        return []
+
+    rows = aggregate_flights_for_csv(all_results, code)
+
+    if not rows:
+        print("No flights found to write to CSV.")
+        return all_results
+
+    output_folder = choose_output_folder()
+    print(f"Generated {len(rows)} flight rows for CSV.")
+    csv_path = write_csv(rows, code, end_date, output_folder)
+
+    print(f"CSV created successfully: {csv_path}")
+    return all_results
+
 
 if __name__ == "__main__":
     main()
