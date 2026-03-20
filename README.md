@@ -1,140 +1,253 @@
-# Aerodatabox Route Builder
+# ATC Ground Point Route Builder
 
-The **Aerodatabox Route Builder** is a command-line tool that retrieves 7 days of airport schedule data from the [Aerodatabox API](https://rapidapi.com/aedbx-aedbx/api/aerodatabox) and generates route summaries in the format:
+The **ATC Ground Point Route Builder** is a command-line tool that retrieves 7 days of historical flight schedule data from the AeroDataBox API and generates **route-based CSV schedules** for use in ATC Ground Point.
 
-`QFA-YSSY-B737.10:A321.7-ANY#`
+Each output row represents a **unique airline + airport + stand tag combination**, with all aircraft operating on that route consolidated into a single entry.
 
-Each output line represents an airline–destination combination, showing all aircraft families operating on that route.
+**Note:** This is an independent tool and is not affiliated with the developer of ATC Ground Point.
 
-**Note:** This is not an official tool from the developer of ATC Ground Point and is independently developed and maintained.
-
-<a href="https://www.buymeacoffee.com/thatsimpilot" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+<a href="https://www.buymeacoffee.com/thatsimpilot" target="_blank">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" 
+       alt="Buy Me A Coffee" 
+       style="height: 60px !important;width: 217px !important;">
+</a>
 
 ---
 
 ## Overview
 
-This tool is designed for aviation enthusiasts, analysts, and developers who want to:
-- Collect 7 days of airport flight schedule data.
-- Automatically categorize flights by aircraft family.
-- Generate compact route summaries.
-- Optionally export the full schedule in JSON format.
+This tool automates realistic schedule generation by:
+
+- Fetching **7 days of historical flight data**
+- Splitting requests into **AM and PM windows**
+- Combining **arrivals and departures into unified routes**
+- Mapping aircraft to **ICAO aircraft codes**
+- Exporting a **clean CSV ready for ATC Ground Point**
+
+---
+
+## Output Format
+
+The generated CSV uses the following structure:
+
+
+`Airline, Airport, Airplane Models, Stand Tags`
+
+
+### Example
+
+
+QFA, YMML, B738:A332, ANY
+VOZ, YBBN, B738, ANY
+FDX, YSSY, B763, CARGO
+
+
+### Logic
+
+- One row per:
+  - Airline
+  - Route airport (origin/destination)
+  - Stand tag
+- Aircraft types are:
+  - Deduplicated
+  - Sorted
+  - Joined with `:`
+- Arrivals and departures are merged into the same row
+
+---
+
+## Features
+
+### ICAO-Based Airport Handling
+- Accepts **ICAO airport codes only**
+- Ensures compatibility with ATC Ground Point
+
+---
+
+### Route Aggregation
+- Departures grouped by **destination airport**
+- Arrivals grouped by **origin airport**
+- Combined into a single route entry
+
+---
+
+### Aircraft ICAO Mapping
+Aircraft types are resolved using:
+
+1. API-provided ICAO codes (preferred)
+2. Custom mapping dictionary
+3. Fallback to raw aircraft name if unmapped
+
+Mapping file:
+
+`aircraftMapping.py`
+
+
+---
+
+### Stand Tag Logic
+
+- `ANY` → default passenger flights  
+- `CARGO` → applied when `isCargo = true`
+
+---
+
+### 7-Day Historical Window
+
+- User selects an **end date**
+- Script automatically fetches:
+  - Previous 6 days + selected day
+
+---
+
+### API Handling
+
+- 14 API calls per run:
+  - 7 days × 2 time windows
+- Includes delay between requests to reduce rate limiting
+
+---
+
+### Output Folder Selection
+
+- GUI folder picker for saving CSV
+- Falls back to working directory if cancelled
 
 ---
 
 ## Installation
 
-You can use this program in one of two ways:
-
-### 1. Prebuilt Executable (Recommended)
-
-A standalone Windows executable is available under the **Releases** section on GitHub.
-
-- Download the latest `RouteBuilder.exe` from the [Releases page](../../releases/latest).
-- Run it directly from File Explorer or a command prompt — **no Python installation required**.
-
-### 2. Python Script
-
-If you prefer to run the source code directly:
+### Option 1: Python Script
 
 #### Requirements
-- Python 3.8 or later  
-- The `requests` library
+
+- Python 3.8+
+- requests
+
+Install dependencies:
+
+
+`pip install requests`
+
+
+Run:
+
+
+`python routes_builder.py`
+
+
+---
+
+### Option 2: Executable
+
+Download the prebuilt executable from the **Releases** page and run directly.
+
+---
 
 ## Usage
 
-When you run the tool, you will be prompted to enter:
+You will be prompted for:
 
-1. **RapidAPI key** – your personal Aerodatabox API key.  
-2. **Airport code** – 4-letter ICAO (e.g., `YBBN`) or 3-letter IATA (e.g., `BNE`).  
-3. **Start date** – `YYYY-MM-DD` format.  
-   - The following 6 days are fetched automatically.  
-   - The 7-day range must be entirely in the past (the last day before today).  
-4. **Output folder path** – where the results will be saved.  
-5. Whether to write:  
-   - `combined_schedule.json` (y/n)  
-   - `routes.txt` (y/n)  
+1. **RapidAPI Key**
+2. **Airport ICAO Code**
+3. **End Date (DD-MM-YYYY)**
+   - Must be before today
+4. **Output folder (via file picker)**
+
+---
+
+### Example
 
 
-### Example Interaction
+Please enter your RapidAPI key: XXXXX
 
-== Aerodatabox 7-day fetch and route builder ==
-Enter your RapidAPI key: xxxxxxx
+Please enter the ICAO code of the airport: YSSY
 
-Enter airport code (ICAO 4 letters or IATA 3 letters, e.g., YBBN or BNE): `YBBN`
-
-Enter start date (YYYY-MM-DD) for a 7-day window that is fully in the past: `2025-10-28`
-
-Enter full output folder path: `C:\Users\XXXX\Documents\Schedules`
-
-Write combined_schedule.json [y/n]: `y`
-
-Write routes.txt [y/n]: `y`
-
-Fetching 7 days (2025-10-28 to 2025-11-03) for YBBN...
-
-Wrote 154 routes -> C:\Users\XXXX\Documents\Schedules\routes.txt
+Please enter the end date in DD-MM-YYYY format:
+15-03-2026
 
 
 ---
 
-## Output Files
+## Output
 
-### routes.txt
-
-Each line represents a route and the aircraft families that operated on it:
-
-`<AirlineICAO>-<DestICAO>-<AircraftFamily1>.<ID>:<AircraftFamily2>.<ID>-ANY#`
-
-**Example:**
-
-QFA-YSSY-B737.10:A321.7-ANY#
-VOZ-YMML-B738.10-ANY#
+The tool generates:
 
 
-### combined_schedule.json
+`<ICAO>_schedule.csv`
 
-A full combined dataset containing all AM and PM schedules for the selected 7-day window.
+
+Example:
+
+
+`YSSY_schedule.csv`
+
 
 ---
 
-## Aircraft Family IDs
+## How It Works
 
-| ID | Description | Example Types |
-|----|--------------|---------------|
-| 3  | Regional turboprops | ATR-72, AN-140 |
-| 4  | DHC-8D / ATR-72 | DHC-8D |
-| 5  | Small regional jets | CRJ700–1000, ARJ21, MD-80 |
-| 6  | A220 / E295 family | A220-300, E295 |
-| 7  | A320 family | A319, A320, A321 |
-| 8  | A350 family | A350-900/1000 |
-| 9  | A380 | A380-800 |
-| 10 | B737 family | B737-700/800/900/MAX |
-| 11 | B787 family | B787-8/9/10 |
-| 12 | B747 family | B747-400/8 |
-| 13 | B757 family | B757-200/300 |
-| 14 | A340 / legacy quads | A340-300/600 |
-| 15 | B777 family | B777-200/300 |
-| 16 | A330 family | A330-200/300/NEO |
-| 17 | B767 family | B767-300/400 |
-| 26 | Fokker 100 | F100 |
-| 1  | Unknown prop aircraft | GA, C208, PC12, etc. |
-
-Full mapping is contained in the source code.
+1. Builds AM/PM 12-hour windows:
+   - 000000 → 115959
+   - 120000 → 235959  
+2. Fetches flight data from AeroDataBox API  
+3. Processes arrivals and departures  
+4. Normalises:
+   - Airline codes
+   - Airport ICAO codes
+   - Aircraft ICAO types  
+5. Aggregates routes  
+6. Writes CSV output  
 
 ---
 
-## Notes
+## Aircraft Mapping Notes
 
-- The tool performs 14 API requests per run (7 days × 2 time windows).  
-- Data is fetched via the Aerodatabox API on RapidAPI, and usage counts against your RapidAPI quota.  
-- If you rerun the tool with the same parameters, existing output files will be overwritten.
+- Mapping ensures consistent ICAO aircraft codes
+- Covers:
+  - Airbus
+  - Boeing
+  - Regional aircraft
+  - General aviation
+- Generic aircraft families are mapped to best-fit defaults
+
+If an aircraft is not mapped, it will appear unchanged in the CSV.
+
+---
+
+## Limitations
+
+- Generic aircraft labels (e.g. "Boeing 737") are mapped to a default subtype
+- Accuracy depends on API data quality
+- Requires valid RapidAPI subscription
+
+---
+
+## API Usage
+
+Data is sourced from AeroDataBox via RapidAPI.
+
+- Each run performs **14 requests**
+- Counts toward your API usage quota
 
 ---
 
 ## License
 
-This project uses data from the Aerodatabox API via RapidAPI.  
-Users must supply their own API key and comply with Aerodatabox’s [terms of use](https://rapidapi.com/aedbx-aedbx/api/aerodatabox).
+MIT License © Hayden Hookham
 
-MIT License © 2025 Hayden Hookham
+---
+
+## Disclaimer
+
+This project is not affiliated with ATC Ground Point.
+
+---
+
+## Future Improvements
+
+- Automatic detection of unmapped aircraft
+- Batch processing for multiple airports
+- Custom stand tag rules
+- Direct export to ATC Ground Point formats
+- GUI version
