@@ -37,9 +37,9 @@ The generated CSV uses the following structure:
 ### Example
 
 
-QFA, YMML, B738:A332, ANY
-VOZ, YBBN, B738, ANY
-FDX, YSSY, B763, CARGO
+`QFA, YMML, B738:A332, ANY`
+`VOZ, YBBN, B738, ANY`
+`FDX, YSSY, B763, CARGO`
 
 
 ### Logic
