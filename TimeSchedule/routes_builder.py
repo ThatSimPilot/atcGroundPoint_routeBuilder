@@ -211,7 +211,30 @@ def get_route_airport_code(flight: dict, direction: str) -> str:
     ).upper()
 
 def get_callsign(flight: dict) -> str:
-    return (flight.get("callSign") or "UNKNOWN").strip().upper()
+    call_sign = (flight.get("callSign") or "").strip().upper()
+    if call_sign:
+        return call_sign
+
+    airline = flight.get("airline") or {}
+    airline_code = (
+        airline.get("icao")
+        or airline.get("iata")
+        or airline.get("code")
+        or ""
+    )
+    flight_number = (
+        flight.get("number")
+        or flight.get("flightNumber")
+        or ""
+    )
+
+    if airline_code and flight_number:
+        return f"{str(airline_code).upper()}{str(flight_number).strip()}"
+
+    if airline_code:
+        return str(airline_code).upper()
+
+    return "UNKNOWN"
 
 
 def get_departure_airport_code(flight: dict) -> str:
@@ -288,8 +311,15 @@ def aggregate_flights_for_csv(all_results: list, airport_code: str) -> list[dict
         departures = data.get("departures") or []
         arrivals = data.get("arrivals") or []
 
+        unknown_callsign_count = 0
+
         for flight in departures:
             callsign = get_callsign(flight)
+
+            if callsign == "UNKNOWN" and unknown_callsign_count < 5:
+                print("Unknown callsign sample:", flight)
+                unknown_callsign_count += 1
+
             dep_airport = airport_code
             arr_airport = get_arrival_airport_code(flight)
             flight_time = get_flight_time(flight, "departure")
@@ -303,6 +333,11 @@ def aggregate_flights_for_csv(all_results: list, airport_code: str) -> list[dict
 
         for flight in arrivals:
             callsign = get_callsign(flight)
+
+            if callsign == "UNKNOWN" and unknown_callsign_count < 10:
+                print("Unknown callsign sample (arrival):", flight)
+                unknown_callsign_count += 1
+
             dep_airport = get_departure_airport_code(flight)
             arr_airport = airport_code
             flight_time = get_flight_time(flight, "arrival")
