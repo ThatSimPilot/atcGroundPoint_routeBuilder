@@ -272,7 +272,8 @@ def write_csv(rows: list[dict], airport_code: str, end_date: datetime, output_fo
     with open(output_path, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.DictWriter(
             csvfile,
-            fieldnames=["Airline", "Airport", "Airplane Models", "Stand Tags"]
+            fieldnames=["Airline", "Airport", "Airplane Models", "Stand Tags"],
+            delimiter=';'
         )
         writer.writeheader()
         writer.writerows(rows)

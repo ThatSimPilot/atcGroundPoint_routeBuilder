@@ -37,7 +37,22 @@ def prompt_airport_code():
         if len(code) == 4 and code.isalpha():
             code_type = "ICAO"
             return code.upper(), code_type
-        print("Invalid code. Please enter a valid ICAO (4 letters) code.") 
+        print("Invalid code. Please enter a valid ICAO (4 letters) code.")
+
+def prompt_day_range() -> int:
+    while True:
+        raw = input("Enter number of days to fetch (1-7): ").strip()
+
+        if not raw.isdigit():
+            print("Please enter a valid number.")
+            continue
+
+        days = int(raw)
+
+        if 1 <= days <= 7:
+            return days
+
+        print("Value must be between 1 and 7.") 
     
 def prompt_end_date() -> datetime:
     while True:
@@ -62,8 +77,11 @@ def build_headers(api_key: str) -> dict:
 	    "Content-Type": "application/json"
     }
 
-def build_12hr_windows(end_date: datetime) -> list[tuple[datetime, datetime]]:
-    start_date = end_date - timedelta(days=6)
+def build_12hr_windows(end_date: datetime, num_days: int) -> list[tuple[datetime, datetime]]:
+    start_date = end_date - timedelta(days=num_days - 1)
+    
+    print(f"Fetching range: {start_date.date()} → {end_date.date()} ({num_days} days)")
+
     windows = []
 
     current_day = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -261,7 +279,7 @@ def get_flight_time(flight: dict, direction: str) -> str:
     """
     For departures, use departure scheduled local time.
     For arrivals, use arrival scheduled local time.
-    Returns HH:MM where possible.
+    Returns HHMM where possible.
     """
     if direction == "departure":
         time_block = (flight.get("departure") or {}).get("scheduledTime") or {}
@@ -280,7 +298,7 @@ def get_flight_time(flight: dict, direction: str) -> str:
     # 2026-03-04 09:55Z
     try:
         time_part = raw_time.split(" ")[1]
-        return time_part[:5]
+        return time_part[:2] + time_part[3:5]
     except (IndexError, AttributeError):
         return raw_time
 
@@ -379,7 +397,8 @@ def write_csv(rows: list[dict], airport_code: str, end_date: datetime, output_fo
                 "Arrival Airport",
                 "Airplane Model",
                 "Stand Tags"
-            ]
+            ],
+            delimiter=";"
         )
         writer.writeheader()
         writer.writerows(rows)
@@ -390,9 +409,11 @@ def main():
     api_key = prompt_api_key()
     code, code_type = prompt_airport_code()
     end_date = prompt_end_date()
+    num_days = prompt_day_range()
+
     headers = build_headers(api_key)
 
-    windows = build_12hr_windows(end_date)
+    windows = build_12hr_windows(end_date, num_days)
 
     all_results = []
 
@@ -421,7 +442,7 @@ def main():
 
         time.sleep(0.5)
 
-    print(f"\nCompleted. Pulled {len(all_results)} successful 12-hour windows.")
+    print(f"\nCompleted. Pulled {len(all_results)} successful 12-hour windows ({num_days} day(s)).")
 
     if not all_results:
         print("No successful results returned, so no CSV was created.")
