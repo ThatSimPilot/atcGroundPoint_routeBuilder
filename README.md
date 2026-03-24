@@ -146,25 +146,72 @@ Download the prebuilt executable from the **Releases** page and run directly.
 
 ## Usage
 
+There are two modes of operation depending on the script being used.
+
+---
+
+### Default Route Builder (Route-Based CSV)
+
 You will be prompted for:
 
 1. **RapidAPI Key**
 2. **Airport ICAO Code**
 3. **End Date (DD-MM-YYYY)**
    - Must be before today
+   - The script will automatically fetch the previous 6 days + selected day (7-day period)
 4. **Output folder (via file picker)**
+
+#### Example
+
+
+`Please enter your RapidAPI key: XXXXX`
+
+`Please enter the ICAO code of the airport: YSSY`
+
+`Please enter the end date in DD-MM-YYYY format: 15-03-2026`
+
 
 ---
 
-### Example
+### Time-Based Scheduler (Detailed Flight CSV)
+
+This mode generates a **time-based schedule** instead of aggregated routes.
+
+You will be prompted for:
+
+1. **RapidAPI Key**
+2. **Airport ICAO Code**
+3. **Start Date (DD-MM-YYYY)**
+4. **End Date (DD-MM-YYYY)**
+   - Must be before today
+   - Maximum range: **7 days**
+5. **Output folder (via file picker)**
+
+#### Example
 
 
-Please enter your RapidAPI key: XXXXX
+`Please enter your RapidAPI key: XXXXX`
 
-Please enter the ICAO code of the airport: YSSY
+`Please enter the ICAO code of the airport: YSSY`
 
-Please enter the end date in DD-MM-YYYY format:
-15-03-2026
+`Please enter the start date in DD-MM-YYYY format: 15-03-2026`
+
+`Please enter the end date in DD-MM-YYYY format: 21-03-2026`
+
+
+---
+
+### Key Difference
+
+- **Route Builder**
+  - Outputs: aggregated routes
+  - Input: end date only
+  - Always fetches: 7 days
+
+- **Time-Based Scheduler**
+  - Outputs: individual flights with times
+  - Input: start + end date
+  - Fetches: user-defined range (1–7 days)
 
 
 ---

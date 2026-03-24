@@ -38,37 +38,39 @@ def prompt_airport_code():
             code_type = "ICAO"
             return code.upper(), code_type
         print("Invalid code. Please enter a valid ICAO (4 letters) code.")
-
-def prompt_day_range() -> int:
+ 
+def prompt_date_range() -> tuple[datetime, datetime]:
     while True:
-        raw = input("Enter number of days to fetch (1-7): ").strip()
+        start_raw = input("Please enter the start date in DD-MM-YYYY format: ").strip()
+        end_raw = input("Please enter the end date in DD-MM-YYYY format (must be before today): ").strip()
 
-        if not raw.isdigit():
-            print("Please enter a valid number.")
-            continue
-
-        days = int(raw)
-
-        if 1 <= days <= 7:
-            return days
-
-        print("Value must be between 1 and 7.") 
-    
-def prompt_end_date() -> datetime:
-    while True:
-        raw = input("Please enter the end date in DD-MM-YYYY format (Must be before today's date): ")
         try:
-            end_date = datetime.strptime(raw, "%d-%m-%Y")
+            start_date = datetime.strptime(start_raw, "%d-%m-%Y")
+            end_date = datetime.strptime(end_raw, "%d-%m-%Y")
             today = datetime.now()
 
-            #Must be before today's date
-            if end_date.date() >= today.date():
-                print("End date must be before today's date. Please try again.")
+            if start_date.date() > end_date.date():
+                print("Start date cannot be after end date.")
                 continue
 
-            return end_date
+            if end_date.date() >= today.date():
+                print("End date must be before today. Please enter yesterday or earlier.")
+                continue
+
+            day_count = (end_date.date() - start_date.date()).days + 1
+
+            if day_count < 1:
+                print("Date range must include at least 1 day.")
+                continue
+
+            if day_count > 7:
+                print("Date range cannot be more than 7 days.")
+                continue
+
+            return start_date, end_date
+
         except ValueError:
-            print("Invalid date format. Please enter the date in DD-MM-YYYY format.")
+            print("Invalid date format. Please enter dates in DD-MM-YYYY format.")
 
 def build_headers(api_key: str) -> dict:
     return {
@@ -77,10 +79,8 @@ def build_headers(api_key: str) -> dict:
 	    "Content-Type": "application/json"
     }
 
-def build_12hr_windows(end_date: datetime, num_days: int) -> list[tuple[datetime, datetime]]:
-    start_date = end_date - timedelta(days=num_days - 1)
-    
-    print(f"Fetching range: {start_date.date()} → {end_date.date()} ({num_days} days)")
+def build_12hr_windows(start_date: datetime, end_date: datetime) -> list[tuple[datetime, datetime]]:
+    print(f"Fetching range: {start_date.date()} → {end_date.date()}")
 
     windows = []
 
@@ -408,12 +408,11 @@ def write_csv(rows: list[dict], airport_code: str, end_date: datetime, output_fo
 def main():
     api_key = prompt_api_key()
     code, code_type = prompt_airport_code()
-    end_date = prompt_end_date()
-    num_days = prompt_day_range()
+    start_date, end_date = prompt_date_range()
 
     headers = build_headers(api_key)
 
-    windows = build_12hr_windows(end_date, num_days)
+    windows = build_12hr_windows(start_date, end_date)
 
     all_results = []
 
@@ -442,7 +441,8 @@ def main():
 
         time.sleep(0.5)
 
-    print(f"\nCompleted. Pulled {len(all_results)} successful 12-hour windows ({num_days} day(s)).")
+    day_count = (end_date.date() - start_date.date()).days + 1
+    print(f"\nCompleted. Pulled {len(all_results)} successful 12-hour windows ({day_count} day(s)).")
 
     if not all_results:
         print("No successful results returned, so no CSV was created.")
