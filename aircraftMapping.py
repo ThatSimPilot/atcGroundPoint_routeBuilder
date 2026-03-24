@@ -125,7 +125,7 @@ AIRCRAFT_NAME_TO_ICAO = {
     # ===== DE HAVILLAND / DASH =====
     "De Havilland Canada Dash 8-100": "DH1",
     "De Havilland Canada Dash 8-200": "DH8B",
-    "De Havilland Canada Dash 8-300": "DHC",
+    "De Havilland Canada Dash 8-300": "DH8C",
     "De Havilland Canada Dash 8-400": "DH8D",
     "De Havilland Canada DHC-8-200 Dash 8 / 8Q": "DH8B",
     "De Havilland Canada DHC-8-400 Dash 8Q": "DH8D",

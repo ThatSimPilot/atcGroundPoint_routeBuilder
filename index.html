@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta
+    name="description"
+    content="ATC Ground Point Schedule Builder for generating default and time-based airport schedules from AeroDataBox flight data."
+  />
+  <title>ATC Ground Point Schedule Builder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav-wrap">
+      <a href="#top" class="brand">
+        <span class="brand-mark">ATC</span>
+        <span class="brand-text">Ground Point Schedule Builder</span>
+      </a>
+
+      <nav class="site-nav" aria-label="Primary">
+        <a href="#overview">Overview</a>
+        <a href="#builder-tools">Builders</a>
+        <a href="#outputs">Outputs</a>
+        <a href="#notes">Notes</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero" id="overview">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">Browser-based schedule generation</p>
+          <h1>Build ATC Ground Point schedules directly in your browser.</h1>
+          <p class="hero-text">
+            Generate both default and time-based schedules from AeroDataBox flight data,
+            preview the results on-page, and export them as semicolon-delimited CSV files
+            ready for your ATC Ground Point workflow.
+          </p>
+
+          <div class="hero-actions">
+            <a class="button button-primary" href="#builder-tools">Open builders</a>
+            <a class="button button-secondary" href="#outputs">View output formats</a>
+          </div>
+
+          <ul class="hero-points" aria-label="Key benefits">
+            <li>Default and time-based builders</li>
+            <li>CSV preview and export</li>
+          </ul>
+        </div>
+
+        <aside class="hero-panel" aria-label="Overview cards">
+          <article class="summary-card">
+            <span class="summary-label">Builder 01</span>
+            <h2>Default Schedule</h2>
+            <p>
+              Aggregates routes by airline, airport, aircraft types, and stand tags
+              across a 7-day window ending on your selected date.
+            </p>
+            <dl>
+              <div>
+                <dt>Inputs</dt>
+                <dd>API key, airport, end date</dd>
+              </div>
+              <div>
+                <dt>Output</dt>
+                <dd>Route-based CSV</dd>
+              </div>
+            </dl>
+          </article>
+
+          <article class="summary-card summary-card-accent">
+            <span class="summary-label">Builder 02</span>
+            <h2>Time-Based Schedule</h2>
+            <p>
+              Produces timed movements with callsigns, airports, aircraft and stand tags
+              for more detailed scheduling.
+            </p>
+            <dl>
+              <div>
+                <dt>Inputs</dt>
+                <dd>API key, ICAO, date range</dd>
+              </div>
+              <div>
+                <dt>Output</dt>
+                <dd>Movement-based CSV</dd>
+              </div>
+            </dl>
+          </article>
+        </aside>
+      </div>
+    </section>
+
+    <section class="section" id="builder-tools">
+      <div class="container">
+        <div class="section-heading">
+          <p class="eyebrow">Live Tools</p>
+          <h2>Generate schedules in the browser</h2>
+          <p>
+            Use your own RapidAPI key to fetch flight data and export semicolon-delimited
+            CSV files for ATC Ground Point.
+          </p>
+        </div>
+
+        <div class="tool-stack">
+          <article class="feature-card">
+            <div class="card-head">
+              <span class="pill">Default Schedule</span>
+              <span class="meta">7-day route aggregation</span>
+            </div>
+
+            <h3>Generate a default schedule</h3>
+            <p>
+              Best for creating a reusable base schedule grouped by airline, airport,
+              aircraft types and stand tags.
+            </p>
+
+            <form id="defaultScheduleForm" class="scheduler-form">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="defaultApiKey">RapidAPI Key</label>
+                  <input
+                    type="password"
+                    id="defaultApiKey"
+                    placeholder="Enter your RapidAPI key"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="defaultAirportCode">Airport Code</label>
+                  <input
+                    type="text"
+                    id="defaultAirportCode"
+                    placeholder="YBBN "
+                    required
+                  />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="defaultEndDate">End Date</label>
+                  <input type="date" id="defaultEndDate" required />
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button
+                  type="submit"
+                  class="button button-primary"
+                  id="defaultGenerateBtn"
+                >
+                  Generate Schedule
+                </button>
+                <button
+                  type="button"
+                  class="button button-secondary"
+                  id="defaultDownloadCsvBtn"
+                  disabled
+                >
+                  Download CSV
+                </button>
+              </div>
+            </form>
+
+            <div class="messages">
+              <p id="defaultStatusText" class="status-text"></p>
+              <div id="defaultErrorBox" class="message-box error-box"></div>
+              <div id="defaultSuccessBox" class="message-box success-box"></div>
+            </div>
+
+            <div class="log-panel">
+              <h4>Log</h4>
+              <pre id="defaultLogBox"></pre>
+            </div>
+
+            <div class="table-scroll preview-block">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Airline</th>
+                    <th>Airport</th>
+                    <th>Airplane Models</th>
+                    <th>Stand Tags</th>
+                  </tr>
+                </thead>
+                <tbody id="defaultPreviewTableBody"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="feature-card">
+            <div class="card-head">
+              <span class="pill pill-alt">Time-Based Schedule</span>
+              <span class="meta">Flight movement export</span>
+            </div>
+
+            <h3>Generate a time-based schedule</h3>
+            <p>
+              Best for building movement schedules where flight times, callsigns and
+              individual services matter.
+            </p>
+
+            <form id="timeScheduleForm" class="scheduler-form">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="timeApiKey">RapidAPI Key</label>
+                  <input
+                    type="password"
+                    id="timeApiKey"
+                    placeholder="Enter your RapidAPI key"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="timeAirportCode">Airport ICAO</label>
+                  <input
+                    type="text"
+                    id="timeAirportCode"
+                    placeholder="YBBN"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="timeStartDate">Start Date</label>
+                  <input type="date" id="timeStartDate" required />
+                </div>
+
+                <div class="form-group">
+                  <label for="timeEndDate">End Date</label>
+                  <input type="date" id="timeEndDate" required />
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button
+                  type="submit"
+                  class="button button-primary"
+                  id="timeGenerateBtn"
+                >
+                  Generate Schedule
+                </button>
+                <button
+                  type="button"
+                  class="button button-secondary"
+                  id="timeDownloadCsvBtn"
+                  disabled
+                >
+                  Download CSV
+                </button>
+              </div>
+            </form>
+
+            <div class="messages">
+              <p id="timeStatusText" class="status-text"></p>
+              <div id="timeErrorBox" class="message-box error-box"></div>
+              <div id="timeSuccessBox" class="message-box success-box"></div>
+            </div>
+
+            <div class="log-panel">
+              <h4>Log</h4>
+              <pre id="timeLogBox"></pre>
+            </div>
+
+            <div class="table-scroll preview-block">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Callsign</th>
+                    <th>Departure Airport</th>
+                    <th>Arrival Airport</th>
+                    <th>Airplane Model</th>
+                    <th>Stand Tags</th>
+                  </tr>
+                </thead>
+                <tbody id="timePreviewTableBody"></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="outputs">
+      <div class="container">
+        <div class="section-heading">
+          <p class="eyebrow">Outputs</p>
+          <h2>Expected CSV formats</h2>
+          <p>
+            These examples show the structure of the exported files from each builder.
+          </p>
+        </div>
+
+        <div class="card-grid two-up">
+          <article class="table-card">
+            <h3>Default schedule format</h3>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Airline</th>
+                    <th>Airport</th>
+                    <th>Airplane Models</th>
+                    <th>Stand Tags</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>QFA</td>
+                    <td>YSSY</td>
+                    <td>A333:B738</td>
+                    <td>ANY</td>
+                  </tr>
+                  <tr>
+                    <td>FDX</td>
+                    <td>RJAA</td>
+                    <td>B77L</td>
+                    <td>CARGO</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="table-card">
+            <h3>Time-based schedule format</h3>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Callsign</th>
+                    <th>Departure</th>
+                    <th>Arrival</th>
+                    <th>Model</th>
+                    <th>Stand Tags</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>0735</td>
+                    <td>QFA612</td>
+                    <td>YBBN</td>
+                    <td>YSSY</td>
+                    <td>B738</td>
+                    <td>ANY</td>
+                  </tr>
+                  <tr>
+                    <td>2310</td>
+                    <td>FDX5217</td>
+                    <td>RJAA</td>
+                    <td>YBBN</td>
+                    <td>B77L</td>
+                    <td>CARGO</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-soft" id="notes">
+      <div class="container split-layout">
+        <div>
+          <p class="eyebrow">Notes</p>
+          <h2>Important usage notes</h2>
+          <p>
+            This site runs entirely in the browser. Users should provide their own
+            RapidAPI key when generating schedules.
+          </p>
+          <p>
+            The preview tables show the first portion of the generated output for quick
+            checking. The full result is included in the downloaded CSV.
+          </p>
+          <p>
+            The default builder accepts either ICAO or IATA airport codes. The time-based
+            builder should use ICAO only.
+          </p>
+        </div>
+
+        <aside class="note-panel">
+          <h3>Recommended workflow</h3>
+          <ul>
+            <li>Generate the default schedule first for your base route set</li>
+            <li>Use the time-based schedule when exact movement timing is needed</li>
+            <li>Apply your custom stand-tag refinement rules after export</li>
+          </ul>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-wrap">
+      <div>
+        <strong>ATC Ground Point Schedule Builder</strong>
+        <p>Default and time-based schedule generation for airport projects.</p>
+      </div>
+      <a href="#top" class="back-top">Back to top</a>
+    </div>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
