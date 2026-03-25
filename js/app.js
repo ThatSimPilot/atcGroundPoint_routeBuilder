@@ -12,18 +12,8 @@ const appState = {
   }
 };
 
-document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("defaultScheduleForm")?.addEventListener("submit", handleDefaultSubmit);
-  document.getElementById("timeScheduleForm")?.addEventListener("submit", handleTimeSubmit);
-
-  document.getElementById("defaultDownloadCsvBtn")?.addEventListener("click", () => {
-    downloadCsv("default");
-  });
-
-  document.getElementById("timeDownloadCsvBtn")?.addEventListener("click", () => {
-    downloadCsv("time");
-  });
-});
+const STAND_TAG_GPT_URL = "https://chatgpt.com/g/g-69c0a72644508191b5259a40448479e1-atc-ground-point-schedule-stand-tag-applier";
+const STAND_TAG_MODAL_PREFERENCE_KEY = "atcgp_hide_stand_tag_modal";
 
 document.addEventListener("DOMContentLoaded", () => {
   setupDateLimits();
@@ -41,6 +31,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("timeStartDate")?.addEventListener("change", syncTimeDateLimits);
   document.getElementById("timeEndDate")?.addEventListener("change", syncTimeDateLimits);
+
+  document.getElementById("standTagModalClose")?.addEventListener("click", closeStandTagModal);
+  document.getElementById("standTagModalLater")?.addEventListener("click", closeStandTagModal);
+  document.getElementById("standTagModal")?.addEventListener("click", (event) => {
+    if (event.target.id === "standTagModal") {
+      closeStandTagModal();
+    }
+  });
+  document.getElementById("standTagDontShowAgain")?.addEventListener("change", saveStandTagModalPreference);
 });
 
 async function handleDefaultSubmit(event) {
@@ -221,6 +220,44 @@ function parseDateInputValue(value) {
   return new Date(year, month - 1, day, 0, 0, 0, 0);
 }
 
+function shouldShowStandTagModal() {
+  return localStorage.getItem(STAND_TAG_MODAL_PREFERENCE_KEY) !== "true";
+}
+
+function saveStandTagModalPreference() {
+  const checkbox = document.getElementById("standTagDontShowAgain");
+  if (!checkbox) return;
+
+  if (checkbox.checked) {
+    localStorage.setItem(STAND_TAG_MODAL_PREFERENCE_KEY, "true");
+  } else {
+    localStorage.removeItem(STAND_TAG_MODAL_PREFERENCE_KEY);
+  }
+}
+
+function openStandTagModal() {
+  if (!shouldShowStandTagModal()) return;
+
+  const modal = document.getElementById("standTagModal");
+  const checkbox = document.getElementById("standTagDontShowAgain");
+
+  if (!modal) return;
+
+  if (checkbox) {
+    checkbox.checked = localStorage.getItem(STAND_TAG_MODAL_PREFERENCE_KEY) === "true";
+  }
+
+  modal.hidden = false;
+}
+
+function closeStandTagModal() {
+  saveStandTagModalPreference();
+
+  const modal = document.getElementById("standTagModal");
+  if (!modal) return;
+  modal.hidden = true;
+}
+
 function downloadCsv(type) {
   const sectionState = appState[type];
 
@@ -249,6 +286,8 @@ function downloadCsv(type) {
   a.remove();
 
   URL.revokeObjectURL(url);
+
+  openStandTagModal();
 }
 
 function renderDefaultPreview(rows) {

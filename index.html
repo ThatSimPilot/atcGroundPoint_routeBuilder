@@ -1,21 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta
-    name="description"
-    content="ATC Ground Point Schedule Builder for generating default and time-based airport schedules from AeroDataBox flight data."
-  />
+  <meta name="description"
+    content="ATC Ground Point Schedule Builder for generating default and time-based airport schedules from AeroDataBox flight data." />
   <title>ATC Ground Point Schedule Builder</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-    rel="stylesheet"
-  />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <header class="site-header">
     <div class="container nav-wrap">
@@ -27,6 +24,7 @@
       <nav class="site-nav" aria-label="Primary">
         <a href="#overview">Overview</a>
         <a href="#builder-tools">Builders</a>
+        <a href="#stand-tag-tool">Stand Tags</a>
         <a href="#outputs">Outputs</a>
         <a href="#notes">Notes</a>
       </nav>
@@ -47,12 +45,13 @@
 
           <div class="hero-actions">
             <a class="button button-primary" href="#builder-tools">Open builders</a>
-            <a class="button button-secondary" href="#outputs">View output formats</a>
+            <a class="button button-secondary" href="#stand-tag-tool">Stand tag tool</a>
           </div>
 
           <ul class="hero-points" aria-label="Key benefits">
             <li>Default and time-based builders</li>
             <li>CSV preview and export</li>
+            <li>Custom stand-tag workflow</li>
           </ul>
         </div>
 
@@ -121,27 +120,21 @@
               Best for creating a reusable base schedule grouped by airline, airport,
               aircraft types and stand tags.
             </p>
+            <div class="info-banner">
+              ⚠️ This builder makes up to <strong>2 API requests per day</strong> in the selected schedule range. Ensure
+              your RapidAPI plan supports this usage.
+            </div>
 
             <form id="defaultScheduleForm" class="scheduler-form">
               <div class="form-row">
                 <div class="form-group">
                   <label for="defaultApiKey">RapidAPI Key</label>
-                  <input
-                    type="password"
-                    id="defaultApiKey"
-                    placeholder="Enter your RapidAPI key"
-                    required
-                  />
+                  <input type="password" id="defaultApiKey" placeholder="Enter your RapidAPI key" required />
                 </div>
 
                 <div class="form-group">
                   <label for="defaultAirportCode">Airport Code</label>
-                  <input
-                    type="text"
-                    id="defaultAirportCode"
-                    placeholder="YBBN "
-                    required
-                  />
+                  <input type="text" id="defaultAirportCode" placeholder="YBBN" required />
                 </div>
               </div>
 
@@ -153,19 +146,10 @@
               </div>
 
               <div class="form-actions">
-                <button
-                  type="submit"
-                  class="button button-primary"
-                  id="defaultGenerateBtn"
-                >
+                <button type="submit" class="button button-primary" id="defaultGenerateBtn">
                   Generate Schedule
                 </button>
-                <button
-                  type="button"
-                  class="button button-secondary"
-                  id="defaultDownloadCsvBtn"
-                  disabled
-                >
+                <button type="button" class="button button-secondary" id="defaultDownloadCsvBtn" disabled>
                   Download CSV
                 </button>
               </div>
@@ -208,27 +192,21 @@
               Best for building movement schedules where flight times, callsigns and
               individual services matter.
             </p>
+            <div class="info-banner">
+              ⚠️ This builder makes up to <strong>2 API requests per day</strong> in the selected schedule range. Larger
+              date ranges will significantly increase API usage.
+            </div>
 
             <form id="timeScheduleForm" class="scheduler-form">
               <div class="form-row">
                 <div class="form-group">
                   <label for="timeApiKey">RapidAPI Key</label>
-                  <input
-                    type="password"
-                    id="timeApiKey"
-                    placeholder="Enter your RapidAPI key"
-                    required
-                  />
+                  <input type="password" id="timeApiKey" placeholder="Enter your RapidAPI key" required />
                 </div>
 
                 <div class="form-group">
                   <label for="timeAirportCode">Airport ICAO</label>
-                  <input
-                    type="text"
-                    id="timeAirportCode"
-                    placeholder="YBBN"
-                    required
-                  />
+                  <input type="text" id="timeAirportCode" placeholder="YBBN" required />
                 </div>
               </div>
 
@@ -245,19 +223,10 @@
               </div>
 
               <div class="form-actions">
-                <button
-                  type="submit"
-                  class="button button-primary"
-                  id="timeGenerateBtn"
-                >
+                <button type="submit" class="button button-primary" id="timeGenerateBtn">
                   Generate Schedule
                 </button>
-                <button
-                  type="button"
-                  class="button button-secondary"
-                  id="timeDownloadCsvBtn"
-                  disabled
-                >
+                <button type="button" class="button button-secondary" id="timeDownloadCsvBtn" disabled>
                   Download CSV
                 </button>
               </div>
@@ -291,6 +260,54 @@
             </div>
           </article>
         </div>
+      </div>
+    </section>
+
+    <section class="section" id="stand-tag-tool">
+      <div class="container">
+        <div class="section-heading">
+          <p class="eyebrow">Stand Tag Workflow</p>
+          <h2>Apply stand tags after export</h2>
+          <p>
+            After generating your CSV, use the custom GPT stand-tag applier to add or
+            override stand tags based on your airport layout, airline logic, terminal
+            setup, remote stands, cargo rules, and other airport-specific requirements.
+          </p>
+        </div>
+
+        <article class="feature-card stand-tag-card">
+          <div class="card-head">
+            <span class="pill">Custom GPT</span>
+            <span class="meta">Post-export refinement</span>
+          </div>
+
+          <h3>ATC Ground Point Schedule Stand Tag Applier</h3>
+          <p>
+            This tool is designed for the second step of the workflow. Generate your
+            base schedule here, download the CSV, then open the custom GPT to apply
+            stand-tag rules specific to your airport and schedule.
+          </p>
+
+          <div class="info-list">
+            <div>
+              <h4>Use it for</h4>
+              <p>Airline stand assignment, terminal grouping, regional stands, cargo stands, remote stands, A380
+                handling, and airport-specific tag logic.</p>
+            </div>
+            <div>
+              <h4>Recommended flow</h4>
+              <p>Generate schedule → Download CSV → Open stand-tag applier → Upload CSV → Apply your ruleset.</p>
+            </div>
+          </div>
+
+          <div class="stand-tag-actions">
+            <a class="button button-primary"
+              href="https://chatgpt.com/g/g-69c0a72644508191b5259a40448479e1-atc-ground-point-schedule-stand-tag-applier"
+              target="_blank" rel="noopener noreferrer">
+              Open Stand Tag Applier
+            </a>
+          </div>
+        </article>
       </div>
     </section>
 
@@ -398,7 +415,8 @@
           <ul>
             <li>Generate the default schedule first for your base route set</li>
             <li>Use the time-based schedule when exact movement timing is needed</li>
-            <li>Apply your custom stand-tag refinement rules after export</li>
+            <li>Download the exported CSV file</li>
+            <li>Apply custom stand-tag rules using the stand-tag applier</li>
           </ul>
         </aside>
       </div>
@@ -415,6 +433,39 @@
     </div>
   </footer>
 
+  <div class="modal-overlay" id="standTagModal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="standTagModalTitle"
+      aria-describedby="standTagModalDescription">
+      <button class="modal-close" id="standTagModalClose" aria-label="Close popup">×</button>
+
+      <div class="modal-content">
+        <p class="eyebrow">CSV Downloaded</p>
+        <h3 id="standTagModalTitle">Apply stand tags next</h3>
+        <p id="standTagModalDescription">
+          Your schedule CSV has been downloaded. Open the stand-tag applier to refine
+          the file with airport-specific stand-tag rules.
+        </p>
+
+        <label class="modal-checkbox">
+          <input type="checkbox" id="standTagDontShowAgain" />
+          <span>Don’t show this again</span>
+        </label>
+
+        <div class="modal-actions">
+          <a class="button button-primary"
+            href="https://chatgpt.com/g/g-69c0a72644508191b5259a40448479e1-atc-ground-point-schedule-stand-tag-applier"
+            target="_blank" rel="noopener noreferrer" id="standTagModalOpen">
+            Open Stand Tag Applier
+          </a>
+          <button class="button button-secondary" type="button" id="standTagModalLater">
+            Maybe Later
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="js/app.js"></script>
 </body>
+
 </html>

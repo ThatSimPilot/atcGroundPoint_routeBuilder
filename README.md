@@ -1,6 +1,8 @@
 # ATC Ground Point Route Builder
 
-The **ATC Ground Point Route Builder** is a command-line tool that retrieves 7 days of historical flight schedule data from the AeroDataBox API and generates **route-based CSV schedules** for use in ATC Ground Point.
+The **ATC Ground Point Route Builder** is a web-based tool that generates realistic CSV schedules for use in ATC Ground Point using historical flight data from the AeroDataBox API.
+
+It is designed to run directly in your browser via **GitHub Pages**, with no installation required.
 
 Each output row represents a **unique airline + airport + stand tag combination**, with all aircraft operating on that route consolidated into a single entry.
 
@@ -14,287 +16,181 @@ Each output row represents a **unique airline + airport + stand tag combination*
 
 ---
 
-## Overview
+## 🌐 Web App (GitHub Pages)
 
-This tool automates realistic schedule generation by:
+👉 Launch the Schedule Builder (INSERT LINK)
 
-- Fetching **7 days of historical flight data**
-- Splitting requests into **AM and PM windows**
-- Combining **arrivals and departures into unified routes**
-- Mapping aircraft to **ICAO aircraft codes**
-- Exporting a **clean CSV ready for ATC Ground Point**
+The tool runs entirely in your browser using the provided interface (`index.html`).
 
----
+### Key Features
 
-## Output Format
-
-The generated CSV uses the following structure:
-
-
-`Airline, Airport, Airplane Models, Stand Tags`
-
-
-### Example
-
-
-`QFA, YMML, B738:A332, ANY`
-`VOZ, YBBN, B738, ANY`
-`FDX, YSSY, B763, CARGO`
-
-
-### Logic
-
-- One row per:
-  - Airline
-  - Route airport (origin/destination)
-  - Stand tag
-- Aircraft types are:
-  - Deduplicated
-  - Sorted
-  - Joined with `:`
-- Arrivals and departures are merged into the same row
+- No installation required  
+- Fully browser-based  
+- Instant CSV download  
+- Clean, responsive UI  
+- Supports two schedule types:
+  - **Route-Based (Default Schedule)**
+  - **Time-Based Schedule**
 
 ---
 
-## Features
+## 🧭 Schedule Modes
 
-### ICAO-Based Airport Handling
-- Accepts **ICAO airport codes only**
-- Ensures compatibility with ATC Ground Point
+### ✈️ Default Route Builder (Aggregated)
 
----
+- Generates **route-based schedules**
+- Output is **aggregated by airline + airport**
+- User provides:
+  - Airport ICAO
+  - End date
+- Automatically fetches:
+  - **Fixed 7-day window** (selected date + previous 6 days)
 
-### Route Aggregation
-- Departures grouped by **destination airport**
-- Arrivals grouped by **origin airport**
-- Combined into a single route entry
+✔ Best for: realistic airline route distribution
 
----
+#### 📊 Output Format
 
-### Aircraft ICAO Mapping
-Aircraft types are resolved using:
+```
+Airline, Airport, Airplane Models, Stand Tags
+```
 
-1. API-provided ICAO codes (preferred)
-2. Custom mapping dictionary
-3. Fallback to raw aircraft name if unmapped
+##### Example
 
-Mapping file:
-
-`aircraftMapping.py`
-
-
----
-
-### Stand Tag Logic
-
-- `ANY` → default passenger flights  
-- `CARGO` → applied when `isCargo = true`
+```
+QFA, YMML, B738:A332, ANY
+VOZ, YBBN, B738, ANY
+FDX, YSSY, B763, CARGO
+```
 
 ---
 
-### 7-Day Historical Window
+### ⏱️ Time-Based Scheduler (Detailed)
 
-- User selects an **end date**
-- Script automatically fetches:
-  - Previous 6 days + selected day
+- Generates **individual flight schedules with timestamps**
+- User provides:
+  - Airport ICAO
+  - Start date
+  - End date
+- Constraints:
+  - Maximum range: **7 days**
 
----
+✔ Best for: detailed, time-accurate scheduling
 
-### API Handling
+#### 📊 Output Format
 
-- 14 API calls per run:
-  - 7 days × 2 time windows
-- Includes delay between requests to reduce rate limiting
+```
+Time, Callsign, Departure Airport, Arrival Airport, Airplane Models, Stand Tags
+```
 
----
+##### Example
 
-### Output Folder Selection
-
-- GUI folder picker for saving CSV
-- Falls back to working directory if cancelled
-
----
-
-## Installation
-
-### Option 1: Python Script
-
-#### Requirements
-
-- Python 3.8+
-- requests
-
-Install dependencies:
-
-
-`pip install requests`
-
-
-Run:
-
-
-`python routes_builder.py`
-
+```
+0700, UAL101, KIAH, YSSY, B789, ANY
+0630, QFA405, YSSY, YMML, A321:A332, ANY
+1331, FDX73, YSSY, VHHH, B77W, CARGO
+```
 
 ---
 
-### Option 2: Executable
 
-Download the prebuilt executable from the **Releases** page and run directly.
+## ⚙️ How It Works
 
----
-
-## Usage
-
-There are two modes of operation depending on the script being used.
-
----
-
-### Default Route Builder (Route-Based CSV)
-
-You will be prompted for:
-
-1. **RapidAPI Key**
-2. **Airport ICAO Code**
-3. **End Date (DD-MM-YYYY)**
-   - Must be before today
-   - The script will automatically fetch the previous 6 days + selected day (7-day period)
-4. **Output folder (via file picker)**
-
-#### Example
-
-
-`Please enter your RapidAPI key: XXXXX`
-
-`Please enter the ICAO code of the airport: YSSY`
-
-`Please enter the end date in DD-MM-YYYY format: 15-03-2026`
-
-
----
-
-### Time-Based Scheduler (Detailed Flight CSV)
-
-This mode generates a **time-based schedule** instead of aggregated routes.
-
-You will be prompted for:
-
-1. **RapidAPI Key**
-2. **Airport ICAO Code**
-3. **Start Date (DD-MM-YYYY)**
-4. **End Date (DD-MM-YYYY)**
-   - Must be before today
-   - Maximum range: **7 days**
-5. **Output folder (via file picker)**
-
-#### Example
-
-
-`Please enter your RapidAPI key: XXXXX`
-
-`Please enter the ICAO code of the airport: YSSY`
-
-`Please enter the start date in DD-MM-YYYY format: 15-03-2026`
-
-`Please enter the end date in DD-MM-YYYY format: 21-03-2026`
-
-
----
-
-### Key Difference
-
-- **Route Builder**
-  - Outputs: aggregated routes
-  - Input: end date only
-  - Always fetches: 7 days
-
-- **Time-Based Scheduler**
-  - Outputs: individual flights with times
-  - Input: start + end date
-  - Fetches: user-defined range (1–7 days)
-
-
----
-
-## Output
-
-The tool generates:
-
-
-`<ICAO>_schedule.csv`
-
-
-Example:
-
-
-`YSSY_schedule.csv`
-
-
----
-
-## How It Works
-
-1. Builds AM/PM 12-hour windows:
-   - 000000 → 115959
-   - 120000 → 235959  
+1. Splits each day into 12-hour windows:
+   - 0000 → 1159 
+   - 1200 → 2359
 2. Fetches flight data from AeroDataBox API  
 3. Processes arrivals and departures  
 4. Normalises:
-   - Airline codes
-   - Airport ICAO codes
+   - Airline ICAO codes  
+   - Airport ICAO codes  
    - Aircraft ICAO types  
-5. Aggregates routes  
-6. Writes CSV output  
+5. Aggregates routes (route builder mode only)  
+6. Exports CSV file  
 
 ---
 
-## Aircraft Mapping Notes
+## ✈️ Aircraft Handling
 
-- Mapping ensures consistent ICAO aircraft codes
-- Covers:
-  - Airbus
-  - Boeing
-  - Regional aircraft
-  - General aviation
-- Generic aircraft families are mapped to best-fit defaults
+Aircraft types are resolved using:
 
-If an aircraft is not mapped, it will appear unchanged in the CSV.
+1. API-provided ICAO codes (preferred)  
+2. Custom mapping (`aircraftMapping.py`)  
+3. Fallback to raw aircraft name  
 
 ---
 
-## Limitations
+## 🏷️ Stand Tag Logic
 
-- Generic aircraft labels (e.g. "Boeing 737") are mapped to a default subtype
-- Accuracy depends on API data quality
-- Requires valid RapidAPI subscription
-
----
-
-## API Usage
-
-Data is sourced from AeroDataBox via RapidAPI.
-
-- Each run performs **14 requests**
-- Counts toward your API usage quota
+- `ANY` → default passenger flights  
+- `CARGO` → applied when cargo flight detected
+- Stand tags can updated via the CustomGPT (INSERT LINK)
 
 ---
 
-## License
+## ⚠️ Limitations
+
+- Accuracy depends on AeroDataBox API data  
+- Generic aircraft types may map to defaults  
+- Requires a valid RapidAPI key  
+
+---
+
+## 🔌 API Usage
+
+- Uses AeroDataBox via RapidAPI  
+- **2 API Requests** per day in schedule
+  - 14 Requests for Default Schedule (Full 7 Days)
+- Counts toward your API quota  
+
+---
+
+## 🖥️ Local Python Usage (Alternative)
+
+If you prefer to run locally or modify the tool:
+
+### Run from Repository
+1. Clone repo
+2. Install Python (3.8 or greater) and `requests` module
+3. Run `routes_builder.py`
+
+```
+git clone https://github.com/ThatSimPilot/atcGroundPoint_routeBuilder.git
+cd <repo-name>
+pip install requests
+python routes_builder.py
+```
+
+---
+
+### Or Install and Run Individual Scripts
+
+- `DefaultSchedule/routes_builder.py`
+- `TimeBasedSchedule/routes_builder.py`
+
+---
+
+## 📁 Output
+
+```
+<ICAO>_schedule.csv
+```
+
+Example:
+
+```
+YSSY_schedule.csv
+```
+
+---
+
+## 📄 License
 
 MIT License © Hayden Hookham
 
 ---
 
-## Disclaimer
+## ⚠️ Disclaimer
 
 This project is not affiliated with ATC Ground Point.
 
 ---
-
-## Future Improvements
-
-- Automatic detection of unmapped aircraft
-- Batch processing for multiple airports
-- Custom stand tag rules
-- Direct export to ATC Ground Point formats
-- GUI version
