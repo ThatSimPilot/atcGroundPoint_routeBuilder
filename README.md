@@ -18,7 +18,7 @@ Each output row represents a **unique airline + airport + stand tag combination*
 
 ## 🌐 Web App (GitHub Pages)
 
-👉 Launch the Schedule Builder (INSERT LINK)
+👉 [Launch the Schedule Builder ](https://thatsimpilot.github.io/atcGroundPoint_routeBuilder/)
 
 The tool runs entirely in your browser using the provided interface (`index.html`).
 
@@ -123,7 +123,7 @@ Aircraft types are resolved using:
 
 - `ANY` → default passenger flights  
 - `CARGO` → applied when cargo flight detected
-- Stand tags can updated via the CustomGPT (INSERT LINK)
+- Stand tags can updated via the [CustomGPT](https://chatgpt.com/g/g-69c0a72644508191b5259a40448479e1-atc-ground-point-schedule-stand-tag-applier)
 
 ---
 
