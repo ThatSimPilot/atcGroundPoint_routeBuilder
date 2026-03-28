@@ -528,6 +528,20 @@ tbody tr:last-child td {
   transform: none;
 }
 
+.form-hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.form-hint a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.form-hint a:hover {
+  text-decoration: underline;
+}
+
 .messages {
   margin-top: 1.25rem;
 }
